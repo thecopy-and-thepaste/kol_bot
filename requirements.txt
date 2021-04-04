@@ -3,3 +3,4 @@ python-dotenv==0.15.0
 pydash==4.9.2
 boto3==1.17.24
 nltk==3.5
+pandas==1.2.3
