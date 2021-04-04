@@ -12,7 +12,7 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 PREFIX = "+"
-
+COGS = [*Path("cogs").glob("*.py")]
 
 
 class Bot(B):
@@ -22,6 +22,12 @@ class Bot(B):
         self.ready = False
         self.TOKEN = os.getenv('DISCORD_TOKEN')
         super().__init__(command_prefix=PREFIX)
+
+    def setup(self):
+        for cog in COGS:
+            cog_module = cog.stem
+            print(cog.name)
+            self.load_extension(f"cogs.{cog_module}")
 
     def run(self, version):
         self.version = version

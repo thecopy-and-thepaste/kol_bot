@@ -3,7 +3,7 @@
 Thumbs.db
 
 # Environment
-env/*
+env/
 .env
 
 # IDE - VSCode
@@ -20,3 +20,4 @@ env/*
 *.rdf
 *.ris
 *.pyc
+logs/
