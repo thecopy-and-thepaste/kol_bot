@@ -128,12 +128,16 @@ class MrSpreadsheet(Cog):
         REPORT_MAPPER = {
             "pg": lambda x: x["power"] or 0,
             "relic": relic,
+            "gear": lambda x: x["gear_level"]
         }
 
         SHEET_PROCESSOR = {
             "pg": def_processor,
             "relic": def_processor,
+            "gear": def_processor
         }
+
+        
 
         players_stats = self.swgoh.get_guild_players(guild)
         base_ids = self.chars[self.chars["id"]
@@ -483,7 +487,8 @@ class MrSpreadsheet(Cog):
 
     VALID_SPREADSHEETS = {
         "pg": "Galactic Power",
-        "relic": "Unit relic level"
+        "relic": "Unit relic level",
+        "gear": "Gear level"
     }
 
     @command(name="mrlobot_reportsheet", aliases=["report", "r"])
