@@ -20,8 +20,6 @@ from typing import List, Optional
 from utils.logger import get_logger
 from utils.exc import EndpointException
 
-from pdb import set_trace as bp
-
 logger = get_logger(__name__)
 
 
@@ -111,6 +109,9 @@ class MrSpreadsheet(Cog):
             logger.error(ex)
             raise ex
 
+    def get_channel(self, ctx):
+        return str(ctx.guild.id) + "_" + str(ctx.channel.id)
+
     def make_spreadsheets(self, guild: str, char_ids: List[int], stat_opts: List[str]) -> List[pd.DataFrame]:
         def relic(unit_data: dict) -> int:
             r_level = int(unit_data["relic_tier"]) - 2
@@ -126,18 +127,16 @@ class MrSpreadsheet(Cog):
             return sheet
 
         REPORT_MAPPER = {
-            "pg": lambda x: x["power"] or 0,
+            "gp": lambda x: x["power"] or 0,
             "relic": relic,
             "gear": lambda x: x["gear_level"]
         }
 
         SHEET_PROCESSOR = {
-            "pg": def_processor,
+            "gp": def_processor,
             "relic": def_processor,
             "gear": def_processor
         }
-
-        
 
         players_stats = self.swgoh.get_guild_players(guild)
         base_ids = self.chars[self.chars["id"]
@@ -185,13 +184,20 @@ class MrSpreadsheet(Cog):
         "guild": lambda self, x: self.__check_guild(*x)
     }
 
-    @command(name="mrlobot_config", aliases=["config", "c"])
+    @command(name="mrlobot_config",
+             aliases=["config", "c"],
+             description=(f"Config options for the bot"
+                          f"Example: +c guild guild_id"),
+             help=(f"option: Config option, possible values (guild).\n"
+                   f"values: Value of the option"))
     async def mrlobot_config(self, ctx, option: str, *, value: str):
         def exc_wrapper(param):
             raise Exception(f"{param} is not a valid config option")
 
         try:
-            sent = (ctx.guild.id, value)
+            channel_id = self.get_channel(ctx)
+
+            sent = (channel_id, value)
 
             requirements = self.CONFIG_PRES\
                 .get(option,
@@ -224,7 +230,12 @@ class MrSpreadsheet(Cog):
         except Exception as ex:
             raise ex
 
-    @command(name="mrlobot_listchars", aliases=["list", "l"])
+    @command(name="mrlobot_listchars",
+             aliases=["list", "l"],
+             description=(f"Lists the available units and their possible aliases to "
+                          f"store/remove in the spreadsheets\n"
+                          f"Example: +l start_expression"),
+             help=(f"start(Optional): Start expression to search available units, if empty, lists all units."))
     async def mrlobot_listchars(self, ctx, start: Optional[str]):
         try:
             chars_to_list = self.chars
@@ -280,11 +291,17 @@ class MrSpreadsheet(Cog):
         except Exception as ex:
             raise ex
 
-    @command(name="mrlobot_addsheet", aliases=["add", "a"])
+    @command(name="mrlobot_addsheet",
+             aliases=["add", "a"],
+             description=(f"Adds the sent units, if it does not exist, creates a spreadsheet in the current channel "
+                          f"for the guild registered\n"
+                          f"Example: +a sheet_name vader, tarkin"),
+             help=(f"sheet_name: Name of the sheet to add units, if the sheet does not exists creates it\n"
+                   f"chars: comma separated units names"))
     async def mrlobot_addsheet(self, ctx, sheet_name: str, *, chars: str):
         try:
-            srvr_id = str(ctx.guild.id)
-            guild = self.get_guild(srvr_id)
+            channel_id = self.get_channel(ctx)
+            guild = self.get_guild(channel_id)
 
             chars = chars.split(",")
 
@@ -304,6 +321,7 @@ class MrSpreadsheet(Cog):
                     response = self.mrlobot_storage\
                         .add_to_spreadsheet(sheet=sheet_name,
                                             guild=guild,
+                                            channel=channel_id,
                                             chars=[*correct_chars.keys()])
                 except Exception as ex:
                     # Endpoint error, we don't need custom messaga
@@ -351,11 +369,17 @@ class MrSpreadsheet(Cog):
         except Exception as ex:
             raise ex
 
-    @command(name="mrlobot_deletesheet", aliases=["delete", "d"])
+    @command(name="mrlobot_deletesheet",
+             aliases=["delete", "d"],
+             description=(f"Deletes the sent units or the entire spreadsheet in the current channel "
+                          f"for the guild registered\n"
+                          f"Example: +d sheet_name vader, tarkin"),
+             help=(f"sheet_name: Name of the sheet to delete or delete units\n"
+                   f"chars(Optional): comma separated units names, if empty, deletes the complete spreadsheet"))
     async def mrlobot_deletesheet(self, ctx, sheet_name: str, *, chars: Optional[str] = ""):
         try:
-            srvr_id = str(ctx.guild.id)
-            guild = self.get_guild(srvr_id)
+            channel_id = self.get_channel(ctx)
+            guild = self.get_guild(channel_id)
 
             if len(chars) != 0:
                 chars = chars.split(",")
@@ -385,6 +409,7 @@ class MrSpreadsheet(Cog):
                 response = self.mrlobot_storage\
                     .remove_to_spreadsheet(sheet=sheet_name,
                                            guild=guild,
+                                           channel=channel_id,
                                            chars=send_chars)
 
                 deleted = response["deleted"]
@@ -432,17 +457,23 @@ class MrSpreadsheet(Cog):
         except Exception as ex:
             raise ex
 
-    @command(name="mrlobot_showsheet", aliases=["show", "s"])
+    @command(name="mrlobot_showsheet",
+             aliases=["show", "s"],
+             description=(f"Shows the units in the stored sheets in the current channel for the guild "
+                          f"registered\n"
+                          f"Example: +s start_expresion"),
+             help=(f"start: Start expression to search (wildcard * to get all sheets)"))
     async def mrlobot_showsheet(self, ctx, start: str):
         try:
-            srvr_id = str(ctx.guild.id)
-            guild = self.get_guild(srvr_id)
+            channel_id = self.get_channel(ctx)
+            guild = self.get_guild(channel_id)
 
             try:
                 if start == "*":
                     start = ""
                 response = self.mrlobot_storage\
                     .guild_spreadsheets(guild=guild,
+                                        channel=channel_id,
                                         start_expression=start)
             except Exception as ex:
                 # Endpoint error, we don't need custom messaga
@@ -486,12 +517,18 @@ class MrSpreadsheet(Cog):
             raise ex
 
     VALID_SPREADSHEETS = {
-        "pg": "Galactic Power",
+        "gp": "Galactic Power",
         "relic": "Unit relic level",
         "gear": "Gear level"
     }
 
-    @command(name="mrlobot_reportsheet", aliases=["report", "r"])
+    @command(name="mrlobot_reportsheet",
+             aliases=["report", "r"],
+             description=(f"Reports the selected stat for all the units stored "
+                          f"in the spreadsheet for all the players in the guild\n"
+                          f"Example: +r sheet_name gear"),
+             help=(f"sheet_name: Name of the sheet to report\n"
+                   f"to_report: Stat to report (gp-Galactic Power, gear-Gear Level, relic-Relic Level)"))
     async def mrlobot_reportsheet(self, ctx, sheet_name: str, *, to_report: str):
         try:
             opts = [*map(lambda x: x.strip(), to_report.split(","))]
@@ -517,10 +554,13 @@ class MrSpreadsheet(Cog):
                 await ctx.send(embed=embed)
 
             if len(opts_to_report[True]) > 0:
-                guild = self.get_guild(ctx.guild.id)
+                channel_id = self.get_channel(ctx)
+                guild = self.get_guild(channel_id)
                 try:
                     response = self.mrlobot_storage\
-                        .get_spreadsheet(guild, sheet_name)
+                        .get_spreadsheet(guild=guild,
+                                         channel=channel_id,
+                                         sheet=sheet_name)
                 except Exception as ex:
                     # Endpoint error, we don't need custom messaga
                     raise ex

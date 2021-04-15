@@ -24,6 +24,8 @@ class Bot(B):
         super().__init__(command_prefix=PREFIX)
 
     def setup(self):
+        self.remove_command("help")
+        
         for cog in COGS:
             cog_module = cog.stem
             print(cog.name)

@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 from utils.logger import get_logger
 from utils.exc import EndpointException
-from pdb import set_trace as bp
 
 logger = get_logger(__name__)
 
@@ -103,13 +102,17 @@ class MrLobotStorageEndpoint(object):
             logger.error(ex)
             raise ex
 
-    def add_to_spreadsheet(self, sheet: str, guild: str, chars: List[int]):
+    def add_to_spreadsheet(self, sheet: str,
+                           guild: str,
+                           channel: str,
+                           chars: List[int]):
         try:
             # endopoint/spreadsheet/sheet_name -> put
             ep = f"{self.endpoint}spreadsheet/{sheet}"
             payload = {
                 "guild": str(guild),
-                "chars": chars
+                "chars": chars,
+                "channel": str(channel)
             }
 
             response = requests.put(ep, data=json.dumps(payload))
@@ -149,13 +152,17 @@ class MrLobotStorageEndpoint(object):
             logger.error(ex)
             raise ex
 
-    def remove_to_spreadsheet(self, sheet: str, guild: str, chars: List[int] = []):
+    def remove_to_spreadsheet(self, sheet: str,
+                              guild: str,
+                              channel: str,
+                              chars: List[int] = []):
         try:
             # endopoint/spreadsheet/sheet_name -> delete
             ep = f"{self.endpoint}spreadsheet/{sheet}"
 
             payload = {
                 "guild": str(guild),
+                "channel": str(channel)
             }
 
             if len(chars) != 0:
@@ -204,10 +211,13 @@ class MrLobotStorageEndpoint(object):
             logger.error(ex)
             raise ex
 
-    def get_spreadsheet(self, guild: str, sheet: str):
+    def get_spreadsheet(self, guild: str,
+                        sheet: str,
+                        channel: str):
         try:
             # endopoint/spreadsheet/guild -> get
-            ep = f"{self.endpoint}spreadsheet/{sheet}/{guild}"
+            ep = f"{self.endpoint}spreadsheet/{sheet}/{guild}/{channel}"
+
             response = requests.get(ep)
 
             if response.status_code == 200:
@@ -241,10 +251,13 @@ class MrLobotStorageEndpoint(object):
             logger.error(ex)
             raise ex
 
-    def guild_spreadsheets(self, guild: str, start_expression: str):
+    def guild_spreadsheets(self, guild: str,
+                           channel: str,
+                           start_expression: str):
         try:
             # endopoint/spreadsheets/guild?options -> get
-            ep = f"{self.endpoint}spreadsheets/{guild}?start={start_expression}"
+            ep = f"{self.endpoint}spreadsheets/{guild}/{channel}?start={start_expression}"
+
             response = requests.get(ep)
 
             if response.status_code == 200:
